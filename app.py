@@ -12,7 +12,6 @@ import random
 
 import tensorflow as tf
 
-st.set_page_config(layout='wide')
 
 @st.cache()
 def load_model(path='models/v1_efficientnetb0/fine_tuned_model'):
@@ -33,6 +32,7 @@ def predict(img, class_names, model):
     pred_df['Flower Name'] = [i.title() for i in class_names]
     pred_df['Confident Level'] = np.round(pred*100, 2)
     pred_df.sort_values('Confident Level', ascending=False, inplace=True)
+    pred_df = pred_df[pred_df['Confident Level'] != 0.0]
     pred_df['Confident Level'] = ["{:.2f}%".format(i) for i in pred_df['Confident Level']]
     pred_df = pred_df.reset_index(drop=True)
     pred_df.index = pred_df.index + 1
@@ -98,9 +98,9 @@ if __name__ == '__main__':
         prediction = predict(np.array(img.resize(IMAGE_SHAPE)), class_names, model)
         img = np.array(img)
 
-    st.title("Here is the image you've selected")
+    st.text("Here is the image you've selected")
     st.image(img)
-    st.title("Here are the five most likely flowers")
+    st.text("Here are the most likely flowers")
     st.write(prediction.to_html(escape=False), unsafe_allow_html=True)
     st.title(f"Here are some images of {prediction.iloc[0, 0]}")
 
