@@ -23,13 +23,13 @@ def get_class_names_and_shape(path='models/v1_efficientnetb0/data.json'):
     with open(path, 'r') as fl:
         data = json.load(fl)
     
-    return data['class_names'], data['image_shape']
+    return [i.replace('_', ' ').title() for i in data['class_names']], data['image_shape']
 
 @st.cache()
 def predict(img, class_names, model):
     pred = model.predict(tf.expand_dims(img, axis=0)).squeeze()
     pred_df = pd.DataFrame()
-    pred_df['Flower Name'] = [i.title() for i in class_names]
+    pred_df['Flower Name'] = class_names
     pred_df['Confident Level'] = np.round(pred*100, 2)
     pred_df.sort_values('Confident Level', ascending=False, inplace=True)
     pred_df = pred_df[pred_df['Confident Level'] != 0.0]
@@ -42,9 +42,11 @@ def image_to_numpy(file_dir, image_size=None):
     img =  cv2.cvtColor(cv2.imread(file_dir), cv2.COLOR_BGR2RGB)
     return cv2.resize(img, image_size) if image_size else img
 
+@st.cache()
 def get_dirs(path):
     return [name for name in os.listdir(path) if isdir(join(path, name))]
 
+@st.cache()
 def get_files(path):
     return [name for name in os.listdir(path) if isfile(join(path, name))]
 
@@ -80,12 +82,6 @@ if __name__ == '__main__':
     class_names, IMAGE_SHAPE = get_class_names_and_shape()
     num_classes = len(class_names)
 
-    st.title('Welcome To Mini Flower!')
-    instructions = f"""
-        Here, you can classify {num_classes} types of Flowers.
-        These are : {', '.join(sorted(class_names))}
-        """
-    st.write(instructions)
     file = st.file_uploader('Upload An Image of Flower')
     
     if file:
@@ -98,11 +94,23 @@ if __name__ == '__main__':
         prediction = predict(np.array(img.resize(IMAGE_SHAPE)), class_names, model)
         img = np.array(img)
 
-    st.text("Here is the image you've selected")
-    st.image(img)
-    st.text("Here are the most likely flowers")
-    st.write(prediction.to_html(escape=False), unsafe_allow_html=True)
+    col1, col2 = st.beta_columns(2)
+    col1.header("Here is the image you've selected")
+    col1.image(img, use_column_width=True)
+    col2.header("Here are the most likely flowers")
+    col2.write(prediction.to_html(escape=False), unsafe_allow_html=True)
+
     st.title(f"Here are some images of {prediction.iloc[0, 0]}")
 
-    imgs = get_random_imgs('samples', rand_imgs=3, rand_classes=[prediction.iloc[0, 0].lower()])
-    st.image([Image.open(img) for img in imgs])
+    bottom_col1, bottom_col2 = st.beta_columns(2)
+
+    imgs = get_random_imgs('samples', rand_imgs=4, rand_classes=[prediction.iloc[0, 0].lower()])
+    bottom_col1.image([Image.open(img) for img in imgs[:2]], use_column_width=True)
+    bottom_col2.image([Image.open(img) for img in imgs[2:]], use_column_width=True)
+
+    st.title('Mini Flower!')
+    instructions = f"""
+        Here, you can classify {num_classes} types of Flowers.
+        These are : {', '.join(sorted(class_names))}
+        """
+    st.write(instructions)
